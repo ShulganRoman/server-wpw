@@ -9,5 +9,6 @@
 ```bash
 git clone --recurse-submodules https://github.com/ShulganRoman/server-wpw.git
 cd server-wpw
+docker-compose up -d
 ```
 
