@@ -1,0 +1,69 @@
+services:
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: pim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       pim_db
+      POSTGRES_USER:     pim_user
+      POSTGRES_PASSWORD: pim_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pim-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pim_user -d pim_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  pim-back:
+    build:
+      context: ./pim
+      dockerfile: Dockerfile
+    container_name: pim-back
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./media:/media
+    environment:
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://postgres:5432/pim_db
+      SPRING_DATASOURCE_USERNAME: pim_user
+      SPRING_DATASOURCE_PASSWORD: pim_pass
+      LOGGING_LEVEL_COM_WPW_PIM:  INFO
+    networks:
+      - pim-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api-docs > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+      start_period: 90s
+
+  pim-front:
+    build:
+      context: ./pim-front
+      dockerfile: Dockerfile
+    container_name: pim-front
+    restart: unless-stopped
+    depends_on:
+      pim-back:
+        condition: service_healthy
+    volumes:
+      - ./media:/media:ro
+    ports:
+      - "80:80"
+    networks:
+      - pim-net
+
+networks:
+  pim-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

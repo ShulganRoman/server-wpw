@@ -1,0 +1,6 @@
+[submodule "wpw-backend"]
+	path = wpw-backend
+	url = https://github.com/ShulganRoman/wpw-backend.git
+[submodule "wpw-frontend"]
+	path = wpw-frontend
+	url = https://github.com/ShulganRoman/wpw-frontend.git
