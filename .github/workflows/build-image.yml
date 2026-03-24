@@ -16,7 +16,7 @@ jobs:
 
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAMESPACE: your-org-or-user
+      IMAGE_NAMESPACE: ShulganRoman
 
     steps:
       - name: Read payload
@@ -27,13 +27,22 @@ jobs:
           echo "source_ref=${{ github.event.client_payload.source_ref }}" >> $GITHUB_OUTPUT
           echo "source_sha=${{ github.event.client_payload.source_sha }}" >> $GITHUB_OUTPUT
 
+      - name: Debug payload
+        run: |
+          echo "SERVICE=${{ steps.payload.outputs.service }}"
+          echo "SOURCE_REPO=${{ steps.payload.outputs.source_repo }}"
+          echo "SOURCE_REF=${{ steps.payload.outputs.source_ref }}"
+          echo "SOURCE_SHA=${{ steps.payload.outputs.source_sha }}"
+
       - name: Checkout source repository at exact commit
         uses: actions/checkout@v4
         with:
           repository: ${{ steps.payload.outputs.source_repo }}
           ref: ${{ steps.payload.outputs.source_sha }}
-          token: ${{ secrets.CHECKOUT_TOKEN }}
           path: app
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -45,25 +54,20 @@ jobs:
       - name: Set image name
         id: image
         run: |
-          if [ "${{ steps.payload.outputs.service }}" = "frontend" ]; then
-            echo "name=${REGISTRY}/${IMAGE_NAMESPACE}/wpw-frontend" >> $GITHUB_OUTPUT
-          else
-            echo "name=${REGISTRY}/${IMAGE_NAMESPACE}/wpw-backend" >> $GITHUB_OUTPUT
-          fi
+          case "${{ steps.payload.outputs.service }}" in
+            frontend)
+              echo "name=${REGISTRY}/${IMAGE_NAMESPACE}/wpw-frontend" >> $GITHUB_OUTPUT
+              ;;
+            backend)
+              echo "name=${REGISTRY}/${IMAGE_NAMESPACE}/wpw-backend" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Unknown service: ${{ steps.payload.outputs.service }}"
+              exit 1
+              ;;
+          esac
 
-      - name: Build and push frontend
-        if: steps.payload.outputs.service == 'frontend'
-        uses: docker/build-push-action@v6
-        with:
-          context: ./app
-          file: ./app/Dockerfile
-          push: true
-          tags: |
-            ${{ steps.image.outputs.name }}:latest
-            ${{ steps.image.outputs.name }}:${{ steps.payload.outputs.source_sha }}
-
-      - name: Build and push backend
-        if: steps.payload.outputs.service == 'backend'
+      - name: Build and push image
         uses: docker/build-push-action@v6
         with:
           context: ./app
