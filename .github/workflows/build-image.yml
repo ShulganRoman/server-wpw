@@ -16,7 +16,7 @@ jobs:
 
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAMESPACE: ShulganRoman
+      IMAGE_NAMESPACE: shulganroman
 
     steps:
       - name: Read payload
@@ -39,6 +39,7 @@ jobs:
         with:
           repository: ${{ steps.payload.outputs.source_repo }}
           ref: ${{ steps.payload.outputs.source_sha }}
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
           path: app
 
       - name: Set up Docker Buildx
