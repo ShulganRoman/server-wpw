@@ -21,7 +21,7 @@ services:
 
   pim-back:
     build:
-      context: ./pim
+      context: ./wpw-backend
       dockerfile: Dockerfile
     container_name: pim-back
     restart: unless-stopped
@@ -46,7 +46,7 @@ services:
 
   pim-front:
     build:
-      context: ./pim-front
+      context: ./wpw-frontend
       dockerfile: Dockerfile
     container_name: pim-front
     restart: unless-stopped
