@@ -16,7 +16,7 @@ jobs:
 
     env:
       REGISTRY: ghcr.io
-      IMAGE_NAMESPACE: ShulganRoman
+      IMAGE_NAMESPACE: shulganroman
 
     steps:
       - name: Read payload
