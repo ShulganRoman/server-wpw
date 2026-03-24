@@ -1,0 +1,74 @@
+name: Build image from repository_dispatch
+
+on:
+  repository_dispatch:
+    types:
+      - build-frontend
+      - build-backend
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAMESPACE: your-org-or-user
+
+    steps:
+      - name: Read payload
+        id: payload
+        run: |
+          echo "service=${{ github.event.client_payload.service }}" >> $GITHUB_OUTPUT
+          echo "source_repo=${{ github.event.client_payload.source_repo }}" >> $GITHUB_OUTPUT
+          echo "source_ref=${{ github.event.client_payload.source_ref }}" >> $GITHUB_OUTPUT
+          echo "source_sha=${{ github.event.client_payload.source_sha }}" >> $GITHUB_OUTPUT
+
+      - name: Checkout source repository at exact commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.payload.outputs.source_repo }}
+          ref: ${{ steps.payload.outputs.source_sha }}
+          token: ${{ secrets.CHECKOUT_TOKEN }}
+          path: app
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set image name
+        id: image
+        run: |
+          if [ "${{ steps.payload.outputs.service }}" = "frontend" ]; then
+            echo "name=${REGISTRY}/${IMAGE_NAMESPACE}/wpw-frontend" >> $GITHUB_OUTPUT
+          else
+            echo "name=${REGISTRY}/${IMAGE_NAMESPACE}/wpw-backend" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push frontend
+        if: steps.payload.outputs.service == 'frontend'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ steps.payload.outputs.source_sha }}
+
+      - name: Build and push backend
+        if: steps.payload.outputs.service == 'backend'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ steps.payload.outputs.source_sha }}
